@@ -31,4 +31,4 @@ if __name__ == "__main__":
             return loss, len(x_test), {"accuracy": accuracy}
 
     # Start Flower client
-    fl.client.start_numpy_client("0.0.0.0:8080", client=CifarClient())
+    fl.client.start_numpy_client("localhost:8888", client=CifarClient())

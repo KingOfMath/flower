@@ -5,7 +5,7 @@ from flwr.common import FitRes, Scalar, Weights
 from flwr.server.client_proxy import ClientProxy
 
 
-class FedAdam(FedOpt):
+class FedYogi(FedOpt):
     """Adaptive Federated Optimization using Adagrad (FedAdagrad) [Reddi et
     al., 2020] strategy.
 
