@@ -13,10 +13,11 @@ model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
 # Define Flower client
 class PaillierClient(fl.client.NumPyClient):
 
-    # def __init__(
-    #     self, public_key
-    # ):
-    #     self.public_key = public_key
+    def __init__(self):
+        self.public_key = None
+
+    def receive_public_keys(self, public_key):
+        self.public_key = public_key
 
     def get_parameters(self):  # type: ignore
         return model.get_weights()
