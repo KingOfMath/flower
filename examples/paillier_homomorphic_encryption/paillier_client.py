@@ -1,6 +1,6 @@
-
 import tensorflow as tf
 import flwr as fl
+import phe
 
 # Load and compile Keras model
 model = tf.keras.applications.MobileNetV2((32, 32, 3), classes=10, weights=None)
@@ -25,9 +25,13 @@ class PaillierClient(fl.client.NumPyClient):
     def fit(self, parameters, config):  # type: ignore
         model.set_weights(parameters)
         model.fit(x_train, y_train, epochs=1, batch_size=32)
-        return model.get_weights(), len(x_train), {}
+        encrypted_weights = self.encrypt_vector(model.get_weights())
+        return encrypted_weights, len(x_train), {}
 
     def evaluate(self, parameters, config):  # type: ignore
         model.set_weights(parameters)
         loss, accuracy = model.evaluate(x_test, y_test)
         return loss, len(x_test), {"accuracy": accuracy}
+
+    def encrypt_vector(self, x):
+        return [self.public_key.encrypt(i) for i in x]
