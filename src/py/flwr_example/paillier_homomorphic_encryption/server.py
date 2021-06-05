@@ -1,5 +1,5 @@
 import flwr as fl
-from examples.paillier_homomorphic_encryption.paillier_server import PaillerServer
+from flwr_example.paillier_homomorphic_encryption.paillier_server import PaillerServer
 from flwr.server.client_manager import SimpleClientManager
 
 # Start Flower server for three rounds of federated learning

@@ -1,7 +1,7 @@
 import os
 
 import flwr as fl
-from examples.paillier_homomorphic_encryption.paillier_client import PaillierClient
+from flwr_example.paillier_homomorphic_encryption.paillier_client import PaillierClient
 
 # Make TensorFlow log less verbose
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"

@@ -1,6 +1,5 @@
 import tensorflow as tf
 import flwr as fl
-import phe
 
 # Load and compile Keras model
 model = tf.keras.applications.MobileNetV2((32, 32, 3), classes=10, weights=None)

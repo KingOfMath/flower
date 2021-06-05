@@ -849,6 +849,13 @@ ServerMessage = _reflection.GeneratedProtocolMessageType('ServerMessage', (_mess
     })
   ,
 
+  'SendPublicKey': _reflection.GeneratedProtocolMessageType('SendPublicKey', (_message.Message,), {
+    'DESCRIPTOR': _SERVERMESSAGE_SENDPUBLICKEY,
+    '__module__': 'flwr.proto.transport_pb2'
+    # @@protoc_insertion_point(class_scope:flower.transport.ServerMessage.SendPublicKey)
+    })
+  ,
+
   'FitIns' : _reflection.GeneratedProtocolMessageType('FitIns', (_message.Message,), {
 
     'ConfigEntry' : _reflection.GeneratedProtocolMessageType('ConfigEntry', (_message.Message,), {
@@ -879,14 +886,16 @@ ServerMessage = _reflection.GeneratedProtocolMessageType('ServerMessage', (_mess
   'DESCRIPTOR' : _SERVERMESSAGE,
   '__module__' : 'flwr.proto.transport_pb2'
   # @@protoc_insertion_point(class_scope:flower.transport.ServerMessage)
-  })
+})
 _sym_db.RegisterMessage(ServerMessage)
+_sym_db.RegisterMessage(ServerMessage.SendPublicKey)
 _sym_db.RegisterMessage(ServerMessage.Reconnect)
 _sym_db.RegisterMessage(ServerMessage.GetParameters)
 _sym_db.RegisterMessage(ServerMessage.FitIns)
 _sym_db.RegisterMessage(ServerMessage.FitIns.ConfigEntry)
 _sym_db.RegisterMessage(ServerMessage.EvaluateIns)
 _sym_db.RegisterMessage(ServerMessage.EvaluateIns.ConfigEntry)
+
 
 ClientMessage = _reflection.GeneratedProtocolMessageType('ClientMessage', (_message.Message,), {
 
