@@ -749,6 +749,7 @@ _SCALAR = _descriptor.Descriptor(
 
 _SERVERMESSAGE_RECONNECT.containing_type = _SERVERMESSAGE
 _SERVERMESSAGE_GETPARAMETERS.containing_type = _SERVERMESSAGE
+_SERVERMESSAGE_SENDPUBLICKEY.containing_type = _SERVERMESSAGE
 _SERVERMESSAGE_FITINS_CONFIGENTRY.fields_by_name['value'].message_type = _SCALAR
 _SERVERMESSAGE_FITINS_CONFIGENTRY.containing_type = _SERVERMESSAGE_FITINS
 _SERVERMESSAGE_FITINS.fields_by_name['parameters'].message_type = _PARAMETERS
@@ -849,13 +850,6 @@ ServerMessage = _reflection.GeneratedProtocolMessageType('ServerMessage', (_mess
     })
   ,
 
-  'SendPublicKey': _reflection.GeneratedProtocolMessageType('SendPublicKey', (_message.Message,), {
-    'DESCRIPTOR': _SERVERMESSAGE_SENDPUBLICKEY,
-    '__module__': 'flwr.proto.transport_pb2'
-    # @@protoc_insertion_point(class_scope:flower.transport.ServerMessage.SendPublicKey)
-    })
-  ,
-
   'FitIns' : _reflection.GeneratedProtocolMessageType('FitIns', (_message.Message,), {
 
     'ConfigEntry' : _reflection.GeneratedProtocolMessageType('ConfigEntry', (_message.Message,), {
@@ -886,16 +880,14 @@ ServerMessage = _reflection.GeneratedProtocolMessageType('ServerMessage', (_mess
   'DESCRIPTOR' : _SERVERMESSAGE,
   '__module__' : 'flwr.proto.transport_pb2'
   # @@protoc_insertion_point(class_scope:flower.transport.ServerMessage)
-})
+  })
 _sym_db.RegisterMessage(ServerMessage)
-_sym_db.RegisterMessage(ServerMessage.SendPublicKey)
 _sym_db.RegisterMessage(ServerMessage.Reconnect)
 _sym_db.RegisterMessage(ServerMessage.GetParameters)
 _sym_db.RegisterMessage(ServerMessage.FitIns)
 _sym_db.RegisterMessage(ServerMessage.FitIns.ConfigEntry)
 _sym_db.RegisterMessage(ServerMessage.EvaluateIns)
 _sym_db.RegisterMessage(ServerMessage.EvaluateIns.ConfigEntry)
-
 
 ClientMessage = _reflection.GeneratedProtocolMessageType('ClientMessage', (_message.Message,), {
 
