@@ -67,6 +67,7 @@ class SimpleClientManager(ClientManager):
     def __init__(self) -> None:
         self.clients: Dict[str, ClientProxy] = {}
         self._cv = threading.Condition()
+        self.cids = []
 
     def __len__(self) -> int:
         return len(self.clients)
@@ -129,6 +130,7 @@ class SimpleClientManager(ClientManager):
             min_num_clients = num_clients
         self.wait_for(min_num_clients)
         # Sample clients which meet the criterion
+        cids = []
         available_cids = list(self.clients)
         if criterion is not None:
             available_cids = [

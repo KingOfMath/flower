@@ -14,12 +14,12 @@
 # ==============================================================================
 """Handle server messages by calling appropriate client methods."""
 
-
 from typing import Tuple
 
 from flwr.client.client import Client
 from flwr.common import serde
 from flwr.proto.transport_pb2 import ClientMessage, Reason, ServerMessage
+
 
 # pylint: disable=missing-function-docstring
 
@@ -40,6 +40,8 @@ def handle(
         return _fit(client, server_msg.fit_ins), 0, True
     if server_msg.HasField("evaluate_ins"):
         return _evaluate(client, server_msg.evaluate_ins), 0, True
+    # if server_msg.HasField("send_public_key"):
+    #     return _send_public_key(client, server_msg.send_public_key), 0, True
     raise UnkownServerMessage()
 
 
@@ -82,3 +84,7 @@ def _reconnect(
     # Build Disconnect message
     disconnect = ClientMessage.Disconnect(reason=reason)
     return ClientMessage(disconnect=disconnect), sleep_duration
+
+#
+# def _send_public_key(client: Client, evaluate_msg: ServerMessage.EvaluateIns) -> ClientMessage:
+#     key_ins = serde.

@@ -44,12 +44,16 @@ message ServerMessage {
     Parameters parameters = 1;
     map<string, Scalar> config = 2;
   }
+  message SendPublicKey {
+    Parameters parameters = 1;
+  }
 
   oneof msg {
     Reconnect reconnect = 1;
     GetParameters get_parameters = 2;
     FitIns fit_ins = 3;
     EvaluateIns evaluate_ins = 4;
+    SendPublicKey send_public_key = 5;
   }
 }
 
