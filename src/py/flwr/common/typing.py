@@ -95,3 +95,19 @@ class Disconnect:
     """Disconnect message from client to server."""
 
     reason: str
+
+
+@dataclass
+class PaillierPublicKey:
+
+    g: int
+    max_int: int
+    n: int
+    nsquare: int
+
+
+@dataclass
+class SendPublicKey:
+    """Receive public key for a client."""
+
+    public_key: PaillierPublicKey

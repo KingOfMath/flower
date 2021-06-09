@@ -1,28 +1,36 @@
+import concurrent
 import timeit
 from logging import INFO, DEBUG, WARNING
-from typing import Optional, Tuple, Dict, Union
+from typing import Optional, Tuple, Dict, Union, cast, List
 
-from flwr.client.grpc_client.connection import insecure_grpc_connection
+import concurrent.futures
+
+from numpy import array
+from phe.util import powmod, invert
+
 from flwr.common import Parameters, Scalar, Weights, weights_to_parameters, GRPC_MAX_MESSAGE_LENGTH
 from flwr.common.logger import log
+from flwr.common.typing import SendPublicKey
 from flwr.server import Server, History
 
 import phe as paillier
 
 from flwr.server.client_manager import ClientManager
+from flwr.server.client_proxy import ClientProxy
 from flwr.server.server import FitResultsAndFailures, DEPRECATION_WARNING_FIT_ROUND, fit_clients
-from flwr.server.strategy import Strategy, FedAvg
+from flwr.server.strategy import FedPaillier
+import numpy as np
 
 
 class PaillerServer(Server):
 
-    def __init__(self, key_length: int, client_manager: ClientManager, strategy: Optional[Strategy] = None) -> None:
+    def __init__(self, key_length: int, client_manager: ClientManager, strategy: FedPaillier = None) -> None:
         super().__init__(client_manager, strategy)
         self._client_manager: ClientManager = client_manager
         self.parameters: Parameters = Parameters(
             tensors=[], tensor_type="numpy.ndarray"
         )
-        self.strategy: Strategy = strategy if strategy is not None else FedAvg()
+        self.strategy: FedPaillier = strategy if strategy is not None else FedPaillier()
         self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=key_length)
 
     def send_public_key(self):
@@ -112,13 +120,14 @@ class PaillerServer(Server):
             self._client_manager.num_available(),
         )
 
-        # TODO: send public key, add client address
-        client_sample_num = len(client_instructions)
-        for i in range(client_sample_num):
-            client_address = client_instructions[i][0].cid[5:]
-            with insecure_grpc_connection(client_address) as conn:
-                receive, send = conn
-                send(self.public_key)
+        # TODO: send public key
+        public_key = SendPublicKey(self.public_key)
+        client_public_key = [(client_instructions[0], public_key) for client_instructions in client_instructions]
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(send_key_to_client, c, key) for c, key in client_public_key
+            ]
+            concurrent.futures.wait(futures)
 
         # Collect `fit` results from all clients participating in this round
         results, failures = fit_clients(client_instructions)
@@ -130,21 +139,38 @@ class PaillerServer(Server):
         )
 
         # Aggregate training results
-        aggregated_result: Union[
-            Tuple[Optional[Parameters], Dict[str, Scalar]],
-            Optional[Weights],  # Deprecated
-        ] = self.strategy.aggregate_fit(rnd, results, failures)
+        aggregated_result = self.strategy.aggregate_fit(rnd, results, failures)
+
+        # TODO: decrypt weights
+        aggregated_result = self.decrypt_aggregation(aggregated_result)
 
         metrics_aggregated: Dict[str, Scalar] = {}
         if aggregated_result is None:
             # Backward-compatibility, this will be removed in a future update
             log(WARNING, DEPRECATION_WARNING_FIT_ROUND)
             parameters_aggregated = None
-        elif isinstance(aggregated_result, list):
-            # Backward-compatibility, this will be removed in a future update
-            log(WARNING, DEPRECATION_WARNING_FIT_ROUND)
-            parameters_aggregated = weights_to_parameters(aggregated_result)
         else:
-            parameters_aggregated, metrics_aggregated = aggregated_result
+            parameters_aggregated = weights_to_parameters(aggregated_result)
 
         return parameters_aggregated, metrics_aggregated, (results, failures)
+
+    def decrypt_aggregation(self, aggregated_result):
+        c = np.array(aggregated_result)
+
+        p = self.private_key.p
+        q = self.private_key.q
+        n = p * q
+        nsquare = n * n
+        d1 = (p - 1) * (q - 1)
+
+        gxd = np.power(c, d1) % nsquare
+        xd = (gxd - 1) // n
+        d2 = invert(d1, n)
+        x = (xd * d2) % n
+        # res = cast(List[np.ndarray], x)
+        return x
+
+
+def send_key_to_client(client: ClientProxy, key: SendPublicKey) -> Tuple[ClientProxy, SendPublicKey]:
+    key_res = client.receive_pk(key)
+    return client, key_res

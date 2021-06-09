@@ -26,6 +26,7 @@ from flwr.common import (
     ParametersRes,
     Reconnect,
 )
+from flwr.common.typing import SendPublicKey
 
 
 class ClientProxy(ABC):
@@ -49,3 +50,7 @@ class ClientProxy(ABC):
     @abstractmethod
     def reconnect(self, reconnect: Reconnect) -> Disconnect:
         """Disconnect and (optionally) reconnect later."""
+
+    @abstractmethod
+    def receive_pk(self, key: SendPublicKey) -> SendPublicKey:
+        """Receive public key."""

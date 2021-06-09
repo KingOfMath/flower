@@ -14,7 +14,6 @@
 # ==============================================================================
 """ProtoBuf serialization and deserialization."""
 
-
 from typing import Any, List, cast
 
 from flwr.proto.transport_pb2 import (
@@ -22,10 +21,11 @@ from flwr.proto.transport_pb2 import (
     Parameters,
     Reason,
     Scalar,
-    ServerMessage,
+    ServerMessage, PaillierPublicKey,
 )
 
 from . import typing
+
 
 # pylint: disable=missing-function-docstring
 
@@ -218,6 +218,20 @@ def evaluate_res_from_proto(msg: ClientMessage.EvaluateRes) -> typing.EvaluateRe
         accuracy=msg.accuracy,  # Deprecated
         metrics=metrics,
     )
+
+
+# === Public Key messages ===
+
+
+def public_key_from_proto(msg: ServerMessage.SendPublicKey) -> ServerMessage.SendPublicKey:
+    """Deserialize flower.SendPublicKey from ProtoBuf message."""
+    key = msg.public_key
+    key_to_fit = PaillierPublicKey(g=key.g, nsquare=key.nsquare, n=key.n, max_int=key.max_int)
+    return ServerMessage.SendPublicKey(public_key=key_to_fit)
+
+
+def key_res_from_proto(msg: ClientMessage.ReceivePublicKey) -> typing.SendPublicKey:
+    return typing.SendPublicKey(public_key=msg.public_key)
 
 
 # === Metrics messages ===

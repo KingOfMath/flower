@@ -33,8 +33,15 @@ enum Reason {
   ACK = 4;
 }
 
+message PaillierPublicKey {
+  int64 g = 1;
+  int64 max_int = 2;
+  int64 n = 3;
+  int64 nsquare = 4;
+}
+
 message ServerMessage {
-  message Reconnect { int64 seconds = 1; }
+  message Reconnect {int64 seconds = 1;}
   message GetParameters {}
   message FitIns {
     Parameters parameters = 1;
@@ -45,7 +52,7 @@ message ServerMessage {
     map<string, Scalar> config = 2;
   }
   message SendPublicKey {
-    Parameters parameters = 1;
+    PaillierPublicKey public_key = 1;
   }
 
   oneof msg {
@@ -58,27 +65,28 @@ message ServerMessage {
 }
 
 message ClientMessage {
-  message Disconnect { Reason reason = 1; }
-  message ParametersRes { Parameters parameters = 1; }
+  message Disconnect {Reason reason = 1;}
+  message ParametersRes {Parameters parameters = 1;}
   message FitRes {
     Parameters parameters = 1;
     int64 num_examples = 2;
-    int64 num_examples_ceil = 3 [ deprecated = true ];
-    float fit_duration = 4 [ deprecated = true ];
+    int64 num_examples_ceil = 3 [deprecated = true];
+    float fit_duration = 4 [deprecated = true];
     map<string, Scalar> metrics = 5;
   }
   message EvaluateRes {
     int64 num_examples = 1;
     float loss = 2;
-    float accuracy = 3 [ deprecated = true ];
+    float accuracy = 3 [deprecated = true];
     map<string, Scalar> metrics = 4;
   }
-
+  message ReceivePublicKey {PaillierPublicKey public_key = 1;}
   oneof msg {
     Disconnect disconnect = 1;
     ParametersRes parameters_res = 2;
     FitRes fit_res = 3;
     EvaluateRes evaluate_res = 4;
+    ReceivePublicKey receive_public_key = 5;
   }
 }
 

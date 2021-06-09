@@ -14,7 +14,6 @@
 # ==============================================================================
 """Flower client app."""
 
-
 import time
 from logging import INFO
 
@@ -24,8 +23,10 @@ from flwr.common.logger import log
 from .client import Client
 from .grpc_client.connection import insecure_grpc_connection
 from .grpc_client.message_handler import handle
+from .grpc_client.secure_message_handler import secure_handle
 from .keras_client import KerasClient, KerasClientWrapper
 from .numpy_client import NumPyClient, NumPyClientWrapper
+from .paillier_client import PaillierClientWrapper, PaillierClient
 
 
 def start_client(
@@ -62,7 +63,7 @@ def start_client(
 
             while True:
                 server_message = receive()
-                client_message, sleep_duration, keep_going = handle(
+                client_message, sleep_duration, keep_going = secure_handle(
                     client, server_message
                 )
                 send(client_message)
@@ -153,6 +154,42 @@ def start_keras_client(
 
     # Wrap the Keras client
     flower_client = KerasClientWrapper(client)
+
+    # Start
+    start_client(
+        server_address=server_address,
+        client=flower_client,
+        grpc_max_message_length=grpc_max_message_length,
+    )
+
+
+def start_paillier_client(
+    server_address: str,
+    client: PaillierClient,
+    grpc_max_message_length: int = GRPC_MAX_MESSAGE_LENGTH,
+) -> None:
+    """Start a Flower NumPyClient which connects to a gRPC server.
+
+    Arguments:
+        server_address: str. The IPv6 address of the server. If the Flower
+            server runs on the same machine on port 8080, then `server_address`
+            would be `"[::]:8080"`.
+        client: flwr.client.NumPyClient. An implementation of the abstract base
+            class `flwr.client.NumPyClient`.
+        grpc_max_message_length: int (default: 536_870_912, this equals 512MB).
+            The maximum length of gRPC messages that can be exchanged with the
+            Flower server. The default should be sufficient for most models.
+            Users who train very large models might need to increase this
+            value. Note that the Flower server needs to be started with the
+            same value (see `flwr.server.start_server`), otherwise it will not
+            know about the increased limit and block larger messages.
+
+    Returns:
+        None.
+    """
+
+    # Wrap the PaillierClient
+    flower_client = PaillierClientWrapper(client)
 
     # Start
     start_client(

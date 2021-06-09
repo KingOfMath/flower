@@ -17,6 +17,7 @@
 
 from flwr import common
 from flwr.common import serde
+from flwr.common.typing import SendPublicKey
 from flwr.proto.transport_pb2 import ClientMessage, ServerMessage
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.grpc_server.grpc_bridge import GRPCBridge
@@ -68,3 +69,11 @@ class GrpcClientProxy(ClientProxy):
         )
         disconnect = serde.disconnect_from_proto(client_msg.disconnect)
         return disconnect
+
+    def receive_pk(self, key: SendPublicKey) -> SendPublicKey:
+        public_key = serde.public_key_from_proto(key)
+        client_msg: ClientMessage = self.bridge.request(
+            ServerMessage(send_public_key=public_key)
+        )
+        key_res = serde.key_res_from_proto(client_msg.receive_public_key)
+        return key_res

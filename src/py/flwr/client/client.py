@@ -69,3 +69,7 @@ class Client(ABC):
             other details such as the number of local data examples used for
             evaluation.
         """
+
+    @abstractmethod
+    def receive_public_keys(self, public_key):
+        """Send public key to client"""

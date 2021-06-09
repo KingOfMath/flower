@@ -16,19 +16,21 @@
 
 from typing import Tuple
 
+import phe
+
 from flwr.client.client import Client
 from flwr.common import serde
 from flwr.proto.transport_pb2 import ClientMessage, Reason, ServerMessage
 
-
 # pylint: disable=missing-function-docstring
+from ..paillier_client import PaillierClient
 
 
 class UnkownServerMessage(Exception):
     """Signifies that the received message is unknown."""
 
 
-def handle(
+def secure_handle(
     client: Client, server_msg: ServerMessage
 ) -> Tuple[ClientMessage, int, bool]:
     if server_msg.HasField("reconnect"):
@@ -36,6 +38,8 @@ def handle(
         return disconnect_msg, sleep_duration, False
     if server_msg.HasField("get_parameters"):
         return _get_parameters(client), 0, True
+    if server_msg.HasField("send_public_key"):
+        return _send_public_key(client, server_msg.send_public_key), 0, True
     if server_msg.HasField("fit_ins"):
         return _fit(client, server_msg.fit_ins), 0, True
     if server_msg.HasField("evaluate_ins"):
@@ -83,3 +87,9 @@ def _reconnect(
     disconnect = ClientMessage.Disconnect(reason=reason)
     return ClientMessage(disconnect=disconnect), sleep_duration
 
+
+def _send_public_key(client: Client, send_public_key_msg: ServerMessage.SendPublicKey) -> ClientMessage:
+    # Deserialize public key
+    public_key = phe.PaillierPublicKey(n=send_public_key_msg.public_key.n)
+    client.receive_public_keys(public_key)
+    return ClientMessage.ReceivePublicKey(public_key=send_public_key_msg.public_key)
