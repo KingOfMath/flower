@@ -161,13 +161,12 @@ class PaillerServer(Server):
         q = self.private_key.q
         n = p * q
         nsquare = n * n
-        d1 = (p - 1) * (q - 1)
+        lamb = (p - 1) * (q - 1)
 
-        gxd = np.power(c, d1) % nsquare
+        gxd = np.power(c, lamb) % nsquare
         xd = (gxd - 1) // n
-        d2 = invert(d1, n)
-        x = (xd * d2) % n
-        # res = cast(List[np.ndarray], x)
+        mu = invert(lamb, n)
+        x = (xd * mu) % n
         return x
 
 
