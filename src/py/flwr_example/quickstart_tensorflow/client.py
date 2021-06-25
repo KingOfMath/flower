@@ -41,8 +41,11 @@ def main() -> None:
             self, weights: fl.common.Weights, config: Dict[str, fl.common.Scalar]
         ) -> Tuple[fl.common.Weights, int, int]:
             self.model.set_weights(weights)
+            inputs = model.get_weights()
             self.model.fit(self.x_train, self.y_train, epochs=5)
-            return self.model.get_weights(), len(self.x_train), len(self.x_train)
+            outputs = model.get_weights()
+            gradients = outputs - inputs
+            return gradients, len(self.x_train), len(self.x_train)
 
         def evaluate(
             self, weights: fl.common.Weights, config: Dict[str, fl.common.Scalar]
@@ -59,7 +62,7 @@ def main() -> None:
     client = MnistClient(model, x_train, y_train, x_test, y_test)
 
     # Start client
-    fl.client.start_keras_client(server_address="[::]:8080", client=client)
+    fl.client.start_keras_client(server_address="localhost:8080", client=client)
 
 
 if __name__ == "__main__":

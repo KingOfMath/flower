@@ -13,8 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Aggregation functions for strategy implementations."""
-
-
+import logging
 from functools import reduce
 from typing import List, Optional, Tuple
 
@@ -66,3 +65,14 @@ def aggregate_qffl(
         updates.append(tmp)
     new_weights = [(u - v) * 1.0 for u, v in zip(weights, updates)]
     return new_weights
+
+
+def aggregate_krum(results: List[Tuple[Weights, int]], failures) -> Weights:
+    num_examples_total = sum([num_examples for _, num_examples in results])
+    num_near = num_examples_total - failures - 2
+
+    pass
+
+
+def aggregate_geomed():
+    pass
