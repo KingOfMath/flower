@@ -9,6 +9,9 @@
 # from keras.backend import random_uniform, cast
 #
 # import flwr as fl
+import math
+import sys
+
 import tensorflow as tf
 #
 # # Make TensorFlow log less verbose
@@ -61,60 +64,105 @@ if __name__ == "__main__":
     from phe.util import powmod, invert
     import random
 
-    pub, pri = phe.generate_paillier_keypair()
+    pub, pri = phe.generate_paillier_keypair(n_length=216)
 
     weights = model.get_weights()
 
-    # w = 0.8
-    # w = np.int64(3)
-    # w = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.longdouble)
-    w = 3.141592653
+    import time
+    import multiprocessing
 
-    # ssss = pub.encrypt(w)
-    # sss = pri.decrypt(ssss)
+    N_JOBS = multiprocessing.cpu_count()
+    from joblib import Parallel, delayed
 
-    int_rep = int(round(w * pow(16, 14))) % pub.n
-    neg_plaintext = pub.n - int_rep
-    neg_ciphertext = (pub.n * neg_plaintext + 1) % pub.nsquare
-    nude_ciphertext = invert(neg_ciphertext, pub.nsquare)
+    time_start = time.time()
+    en = []
+    de = []
 
-    # gm = invert(((pub.n - w) * pub.n + 1) % pub.nsquare, pub.nsquare)
-    gm = (1 + pub.n * int_rep) % pub.nsquare
+    for A in weights:
+        og_shape = A.shape
 
-    # r = np.random.uniform(high=pub.n, size=weights.size)
+        if len(A.shape) == 1:
+            A = np.expand_dims(A, axis=0)
 
-    r = random.SystemRandom().randrange(1, pub.n)
-    rn = powmod(r, pub.n, pub.nsquare)
-    c = (gm * rn) % pub.nsquare
+        print('encrypting matrix shaped ' + str(og_shape))
+        A = np.reshape(A, (1, -1))
+        A = np.squeeze(A)
+        encrypt_A = Parallel(n_jobs=N_JOBS)(delayed(pub.encrypt)(num.item()) for num in A)
+        encrypt_A = np.expand_dims(encrypt_A, axis=0)
+        encrypt_A = np.reshape(encrypt_A, og_shape)
+        en.append(encrypt_A)
 
-    p = pri.p
-    q = pri.q
-    n = p * q
-    nsquare = n * n
-    ps = pri.psquare
-    qs = pri.qsquare
-    # d1 = (p - 1) * (q - 1)
+    time_end = time.time()
+    print('encrypt time cost', time_end - time_start, 's')
+
+    time_start = time.time()
+    for encrypt_A in en:
+        og_shape = encrypt_A.shape
+        print('decrypting matrix shaped ' + str(og_shape))
+        encrypt_A = np.reshape(encrypt_A, (1, -1))
+        encrypt_A = np.squeeze(encrypt_A)
+        encrypt_A = Parallel(n_jobs=N_JOBS)(delayed(pri.decrypt)(num) for num in encrypt_A)
+        encrypt_A = np.expand_dims(encrypt_A, axis=0)
+        encrypt_A = np.reshape(encrypt_A, og_shape)
+    time_end = time.time()
+    print('decrypt time cost', time_end - time_start, 's')
+
+
     #
-    # gxd = np.power(c, d1) % nsquare
-    # xd = (gxd - 1) // n
-    # d2 = invert(d1, n)
-    # x = (xd * d2) % n
-    # print(x)
+    # print("decrypted:" + encrypt_A)
+    #
+    # # w = 0.8
+    # # w = np.int64(3)
+    # # w = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.longdouble)
+    # w = 3.141592653
+    #
+    # print(math.floor(math.log(8, 16)))
 
-    # t1 = np.power(c, p - 1) % ps
-    # t2 = np.power(c, q - 1) % qs
-    q1 = powmod(c, p - 1, ps)
-    q2 = powmod(c, q - 1, qs)
-
-    # dp = (np.power(c, p - 1) % ps - 1) // p * pri.hp % p
-    # dq = (np.power(c, q - 1) % qs - 1) // q * pri.hq % q
-    gp = (powmod(c, p - 1, ps) - 1) // p * pri.hp % p
-    gq = (powmod(c, q - 1, qs) - 1) // q * pri.hq % q
-
-    u = (gq - gp) * pri.p_inverse % q
-    res = gp + (u * p)
-
-    print(res)
-    # decrypt_to_p = powmod(ciphertext, self.p-1, self.psquare), self.p) * self.hp % self.p
-    # decrypt_to_q = powmod(ciphertext, self.q-1, self.qsquare), self.q) * self.hq % self.q
-    # return self.crt(decrypt_to_p, decrypt_to_q)
+    # # ssss = pub.encrypt(w)
+    # # sss = pri.decrypt(ssss)
+    #
+    # int_rep = int(round(w * pow(16, 14))) % pub.n
+    # neg_plaintext = pub.n - int_rep
+    # neg_ciphertext = (pub.n * neg_plaintext + 1) % pub.nsquare
+    # nude_ciphertext = invert(neg_ciphertext, pub.nsquare)
+    #
+    # # gm = invert(((pub.n - w) * pub.n + 1) % pub.nsquare, pub.nsquare)
+    # gm = (1 + pub.n * int_rep) % pub.nsquare
+    #
+    # # r = np.random.uniform(high=pub.n, size=weights.size)
+    #
+    # r = random.SystemRandom().randrange(1, pub.n)
+    # rn = powmod(r, pub.n, pub.nsquare)
+    # c = (gm * rn) % pub.nsquare
+    #
+    # p = pri.p
+    # q = pri.q
+    # n = p * q
+    # nsquare = n * n
+    # ps = pri.psquare
+    # qs = pri.qsquare
+    # # d1 = (p - 1) * (q - 1)
+    # #
+    # # gxd = np.power(c, d1) % nsquare
+    # # xd = (gxd - 1) // n
+    # # d2 = invert(d1, n)
+    # # x = (xd * d2) % n
+    # # print(x)
+    #
+    # # t1 = np.power(c, p - 1) % ps
+    # # t2 = np.power(c, q - 1) % qs
+    # q1 = powmod(c, p - 1, ps)
+    # q2 = powmod(c, q - 1, qs)
+    #
+    # # dp = (np.power(c, p - 1) % ps - 1) // p * pri.hp % p
+    # # dq = (np.power(c, q - 1) % qs - 1) // q * pri.hq % q
+    # gp = (powmod(c, p - 1, ps) - 1) // p * pri.hp % p
+    # gq = (powmod(c, q - 1, qs) - 1) // q * pri.hq % q
+    #
+    # u = (gq - gp) * pri.p_inverse % q
+    # res = gp + (u * p)
+    #
+    # print(res)
+    # # decrypt_to_p = powmod(ciphertext, self.p-1, self.psquare), self.p) * self.hp % self.p
+    # # decrypt_to_q = powmod(ciphertext, self.q-1, self.qsquare), self.q) * self.hq % self.q
+    # # return self.crt(decrypt_to_p, decrypt_to_q)
