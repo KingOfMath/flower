@@ -1,112 +1,73 @@
-# import math
-# import os
-# import random
-# from typing import List
-#
-# import numpy as np
-# import phe
-# from phe.util import powmod, invert
-# from keras.backend import random_uniform, cast
-#
-# import flwr as fl
 import math
-import sys
-
+import os
+import random
+import numpy as np
+import phe
+from phe.util import powmod, invert
+from keras.backend import random_uniform, cast
+import time
+import multiprocessing
+from joblib import Parallel, delayed
 import tensorflow as tf
-#
-# # Make TensorFlow log less verbose
-# from flwr.client.paillier_client import PaillierClient
-#
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-#
+import flwr as fl
+
+# Make TensorFlow log less verbose
+from flwr.client.paillier_client import PaillierClient
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 model = tf.keras.applications.MobileNetV2((32, 32, 3), classes=10, weights=None)
-# model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
-#
-# # Load CIFAR-10 dataset
-# (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-#
-#
-# class MobileClient(PaillierClient):
-#
-#     def get_parameters(self):  # type: ignore
-#         return model.get_weights()
-#
-#     def fit(self, parameters, config=None):  # type: ignore
-#         model.set_weights(parameters)
-#         model.fit(x_train, y_train, epochs=1, batch_size=32)
-#         encrypted_weights = self.encrypt_weights(model.get_weights())
-#         return encrypted_weights, len(x_train), {}
-#
-#     def evaluate(self, parameters, config):  # type: ignore
-#         model.set_weights(parameters)
-#         loss, accuracy = model.evaluate(x_test, y_test)
-#         return loss, len(x_test), {"accuracy": accuracy}
-#
-#     def encrypt_weights(self, w):
-#         w = np.array(w)
-#         gm = (1 + self.public_key.n * w) % self.public_key.nsquare
-#         # r = np.random.uniform(high=pub.n, size=weights.size)
-#
-#         r = random.SystemRandom().randrange(1, self.public_key.n)
-#         rn = powmod(r, self.public_key.n, self.public_key.nsquare)
-#         c = gm % self.public_key.nsquare
-#         return c
+model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
+
+# Load CIFAR-10 dataset
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+
+N_JOBS = multiprocessing.cpu_count()
+
+
+class MobileClient(PaillierClient):
+
+    def get_parameters(self):  # type: ignore
+        return model.get_weights()
+
+    def fit(self, parameters, config=None):  # type: ignore
+        model.set_weights(parameters)
+        model.fit(x_train, y_train, epochs=1, batch_size=32)
+        time_start = time.time()
+        encrypted_weights = self.encrypt_weights(model.get_weights())
+        time_end = time.time()
+        print('encrypt time cost', time_end - time_start, 's')
+        return encrypted_weights, len(x_train), {}
+
+    def evaluate(self, parameters, config):  # type: ignore
+        model.set_weights(parameters)
+        loss, accuracy = model.evaluate(x_test, y_test)
+        return loss, len(x_test), {"accuracy": accuracy}
+
+    def encrypt_weights(self, weights):
+        en = []
+        for matrix in weights:
+            origin_shape = matrix.shape
+
+            if len(matrix.shape) == 1:
+                matrix = np.expand_dims(matrix, axis=0)
+
+            print('encrypting matrix shaped ' + str(origin_shape))
+            matrix = np.squeeze(np.reshape(matrix, (1, -1)))
+            encrypt_matrix = Parallel(n_jobs=N_JOBS)(delayed(self.public_key.encrypt)(num.item()) for num in matrix)
+            encrypt_matrix = np.expand_dims(encrypt_matrix, axis=0)
+            encrypt_matrix = np.reshape(encrypt_matrix, origin_shape)
+            en.append(encrypt_matrix)
+        return en
 
 
 if __name__ == "__main__":
     # Start Flower client
-    # fl.client.start_paillier_client("localhost:8080", client=MobileClient())
+    fl.client.start_paillier_client("localhost:8080", client=MobileClient())
 
-    # raw = np.array(model.get_weights())
-
-    import numpy as np
-    import phe
-    from phe.util import powmod, invert
-    import random
-
-    pub, pri = phe.generate_paillier_keypair(n_length=216)
-
-    weights = model.get_weights()
-
-    import time
-    import multiprocessing
-
-    N_JOBS = multiprocessing.cpu_count()
-    from joblib import Parallel, delayed
-
-    time_start = time.time()
-    en = []
-    de = []
-
-    for A in weights:
-        og_shape = A.shape
-
-        if len(A.shape) == 1:
-            A = np.expand_dims(A, axis=0)
-
-        print('encrypting matrix shaped ' + str(og_shape))
-        A = np.reshape(A, (1, -1))
-        A = np.squeeze(A)
-        encrypt_A = Parallel(n_jobs=N_JOBS)(delayed(pub.encrypt)(num.item()) for num in A)
-        encrypt_A = np.expand_dims(encrypt_A, axis=0)
-        encrypt_A = np.reshape(encrypt_A, og_shape)
-        en.append(encrypt_A)
-
-    time_end = time.time()
-    print('encrypt time cost', time_end - time_start, 's')
-
-    time_start = time.time()
-    for encrypt_A in en:
-        og_shape = encrypt_A.shape
-        print('decrypting matrix shaped ' + str(og_shape))
-        encrypt_A = np.reshape(encrypt_A, (1, -1))
-        encrypt_A = np.squeeze(encrypt_A)
-        encrypt_A = Parallel(n_jobs=N_JOBS)(delayed(pri.decrypt)(num) for num in encrypt_A)
-        encrypt_A = np.expand_dims(encrypt_A, axis=0)
-        encrypt_A = np.reshape(encrypt_A, og_shape)
-    time_end = time.time()
-    print('decrypt time cost', time_end - time_start, 's')
-
+    # pub, pri = phe.generate_paillier_keypair(n_length=216)
+    #
+    # weights = model.get_weights()
 
     #
     # print("decrypted:" + encrypt_A)

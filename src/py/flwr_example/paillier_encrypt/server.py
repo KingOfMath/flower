@@ -6,5 +6,5 @@ from flwr.server.strategy.fedpaillier import FedPaillier
 # Start Flower server for three rounds of federated learning
 if __name__ == "__main__":
     fl.server.start_server("localhost:8080", config={"num_rounds": 3},
-                           server=PaillerServer(client_manager=SimpleClientManager(), key_length=6),
+                           server=PaillerServer(client_manager=SimpleClientManager(), key_length=60),
                            strategy=FedPaillier())

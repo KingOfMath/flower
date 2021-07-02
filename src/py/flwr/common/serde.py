@@ -226,7 +226,7 @@ def evaluate_res_from_proto(msg: ClientMessage.EvaluateRes) -> typing.EvaluateRe
 def public_key_from_proto(msg: ServerMessage.SendPublicKey) -> ServerMessage.SendPublicKey:
     """Deserialize flower.SendPublicKey from ProtoBuf message."""
     key = msg.public_key
-    key_to_fit = PaillierPublicKey(g=key.g, nsquare=key.nsquare, n=key.n, max_int=key.max_int)
+    key_to_fit = PaillierPublicKey(g=key.g, n=key.n, max_int=key.max_int)
     return ServerMessage.SendPublicKey(public_key=key_to_fit)
 
 

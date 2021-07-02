@@ -5,9 +5,6 @@ from typing import Optional, Tuple, Dict, Union, cast, List
 
 import concurrent.futures
 
-from numpy import array
-from phe.util import powmod, invert
-
 from flwr.common import Parameters, Scalar, Weights, weights_to_parameters, GRPC_MAX_MESSAGE_LENGTH
 from flwr.common.logger import log
 from flwr.common.typing import SendPublicKey
@@ -21,6 +18,11 @@ from flwr.server.server import FitResultsAndFailures, DEPRECATION_WARNING_FIT_RO
 from flwr.server.strategy import FedPaillier
 import numpy as np
 
+import time
+import multiprocessing
+from joblib import Parallel, delayed
+
+N_JOBS = multiprocessing.cpu_count()
 
 class PaillerServer(Server):
 
@@ -155,19 +157,22 @@ class PaillerServer(Server):
         return parameters_aggregated, metrics_aggregated, (results, failures)
 
     def decrypt_aggregation(self, aggregated_result):
-        c = np.array(aggregated_result)
+        """Decrypt aggregation results."""
 
-        p = self.private_key.p
-        q = self.private_key.q
-        n = p * q
-        nsquare = n * n
-        lamb = (p - 1) * (q - 1)
+        de = []
+        time_start = time.time()
+        for encrypt_matrix in aggregated_result:
+            origin_shape = encrypt_matrix.shape
+            print('decrypting matrix shaped ' + str(origin_shape))
+            encrypt_matrix = np.squeeze(np.reshape(encrypt_matrix, (1, -1)))
+            decrypt_matrix = Parallel(n_jobs=N_JOBS)(delayed(self.private_key.decrypt)(num) for num in encrypt_matrix)
+            decrypt_matrix = np.expand_dims(decrypt_matrix, axis=0)
+            decrypt_matrix = np.reshape(decrypt_matrix, origin_shape)
+            de.append(decrypt_matrix)
+        time_end = time.time()
+        print('decrypt time cost', time_end - time_start, 's')
 
-        gxd = np.power(c, lamb) % nsquare
-        xd = (gxd - 1) // n
-        mu = invert(lamb, n)
-        x = (xd * mu) % n
-        return x
+        return de
 
 
 def send_key_to_client(client: ClientProxy, key: SendPublicKey) -> Tuple[ClientProxy, SendPublicKey]:

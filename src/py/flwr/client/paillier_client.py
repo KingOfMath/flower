@@ -5,6 +5,8 @@ from typing import List, Tuple, cast, Optional
 import numpy as np
 
 # Load and compile Keras model
+import phe
+
 from .client import Client
 from .numpy_client import DEPRECATION_WARNING_FIT, DEPRECATION_WARNING_EVALUATE_0, \
     DEPRECATION_WARNING_EVALUATE_1
@@ -129,4 +131,5 @@ class PaillierClientWrapper(Client):
         return evaluate_res
 
     def receive_public_keys(self, public_key):
-        self.paillier_client.public_key = public_key
+        paillier_public_key = phe.PaillierPublicKey(n=public_key.n)
+        self.paillier_client.public_key = paillier_public_key
