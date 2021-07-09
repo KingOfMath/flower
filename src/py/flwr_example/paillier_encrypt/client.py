@@ -1,8 +1,11 @@
 import math
 import os
 import random
+import sys
+
 import numpy as np
 import phe
+from phe import EncodedNumber
 from phe.util import powmod, invert
 from keras.backend import random_uniform, cast
 import time
@@ -46,6 +49,7 @@ class MobileClient(PaillierClient):
 
     def encrypt_weights(self, weights):
         en = []
+        time_start = time.time()
         for matrix in weights:
             origin_shape = matrix.shape
 
@@ -58,72 +62,78 @@ class MobileClient(PaillierClient):
             encrypt_matrix = np.expand_dims(encrypt_matrix, axis=0)
             encrypt_matrix = np.reshape(encrypt_matrix, origin_shape)
             en.append(encrypt_matrix)
+        time_end = time.time()
+        print('encrypt time cost', time_end - time_start, 's')
+
         return en
 
 
 if __name__ == "__main__":
     # Start Flower client
-    fl.client.start_paillier_client("localhost:8080", client=MobileClient())
+    # fl.client.start_paillier_client("localhost:8080", client=MobileClient())
 
-    # pub, pri = phe.generate_paillier_keypair(n_length=216)
-    #
-    # weights = model.get_weights()
+    pub, pri = phe.generate_paillier_keypair(n_length=100)
 
-    #
-    # print("decrypted:" + encrypt_A)
-    #
-    # # w = 0.8
-    # # w = np.int64(3)
-    # # w = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.longdouble)
-    # w = 3.141592653
-    #
-    # print(math.floor(math.log(8, 16)))
+    weights = np.array([[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]])
 
-    # # ssss = pub.encrypt(w)
-    # # sss = pri.decrypt(ssss)
+
+    def encode(data):
+        bin_flt_exponent = math.frexp(data)[1]
+        bin_lsb_exponent = bin_flt_exponent - sys.float_info.mant_dig
+        prec_exponent = math.floor(bin_lsb_exponent / math.log(16, 2))
+
+        int_rep = int(round(data * pow(16, -prec_exponent)))
+
+        if abs(int_rep) > pub.max_int:
+            raise ValueError('Integer needs to be within +/- %d but got %d'
+                             % (pub.max_int, int_rep))
+
+        encoding = int_rep % pub.n
+        obfuscator = 1
+        ciphertext = pub.raw_encrypt(encoding, r_value=obfuscator)
+        return ciphertext
+
+    # def decode(data):
+    #     encoded = pri.raw_decrypt(data)
+    #     if self.encoding >= self.public_key.n:
+    #         # Should be mod n
+    #         raise ValueError('Attempted to decode corrupted number')
+    #     elif self.encoding <= self.public_key.max_int:
+    #         # Positive
+    #         mantissa = self.encoding
+    #     elif self.encoding >= self.public_key.n - self.public_key.max_int:
+    #         # Negative
+    #         mantissa = self.encoding - self.public_key.n
+    #     else:
+    #         raise OverflowError('Overflow detected in decrypted number')
     #
-    # int_rep = int(round(w * pow(16, 14))) % pub.n
-    # neg_plaintext = pub.n - int_rep
-    # neg_ciphertext = (pub.n * neg_plaintext + 1) % pub.nsquare
-    # nude_ciphertext = invert(neg_ciphertext, pub.nsquare)
+    #     return mantissa * pow(self.BASE, self.exponent)
+
+    # en = []
+    # for matrix in weights:
+    #     origin_shape = matrix.shape
     #
-    # # gm = invert(((pub.n - w) * pub.n + 1) % pub.nsquare, pub.nsquare)
-    # gm = (1 + pub.n * int_rep) % pub.nsquare
+    #     if len(matrix.shape) == 1:
+    #         matrix = np.expand_dims(matrix, axis=0)
     #
-    # # r = np.random.uniform(high=pub.n, size=weights.size)
+    #     print('encrypting matrix shaped ' + str(origin_shape))
+    #     matrix = np.squeeze(np.reshape(matrix, (1, -1)))
+    #     encrypt_matrix = Parallel(n_jobs=N_JOBS)(delayed(encode)(num.item()) for num in matrix)
+    #     encrypt_matrix = np.expand_dims(encrypt_matrix, axis=0)
+    #     encrypt_matrix = np.reshape(encrypt_matrix, origin_shape)
+    #     en.append(encrypt_matrix)
     #
-    # r = random.SystemRandom().randrange(1, pub.n)
-    # rn = powmod(r, pub.n, pub.nsquare)
-    # c = (gm * rn) % pub.nsquare
+    # de = []
+    # time_start = time.time()
+    # for encrypt_matrix in en:
+    #     origin_shape = encrypt_matrix.shape
+    #     print('decrypting matrix shaped ' + str(origin_shape))
+    #     encrypt_matrix = np.squeeze(np.reshape(encrypt_matrix, (1, -1)))
+    #     decrypt_matrix = Parallel(n_jobs=N_JOBS)(delayed(pri.raw_decrypt)(num) for num in encrypt_matrix)
+    #     decrypt_matrix = np.expand_dims(decrypt_matrix, axis=0)
+    #     decrypt_matrix = np.reshape(decrypt_matrix, origin_shape)
+    #     de.append(decrypt_matrix)
+    # time_end = time.time()
+    # print('decrypt time cost', time_end - time_start, 's')
     #
-    # p = pri.p
-    # q = pri.q
-    # n = p * q
-    # nsquare = n * n
-    # ps = pri.psquare
-    # qs = pri.qsquare
-    # # d1 = (p - 1) * (q - 1)
-    # #
-    # # gxd = np.power(c, d1) % nsquare
-    # # xd = (gxd - 1) // n
-    # # d2 = invert(d1, n)
-    # # x = (xd * d2) % n
-    # # print(x)
-    #
-    # # t1 = np.power(c, p - 1) % ps
-    # # t2 = np.power(c, q - 1) % qs
-    # q1 = powmod(c, p - 1, ps)
-    # q2 = powmod(c, q - 1, qs)
-    #
-    # # dp = (np.power(c, p - 1) % ps - 1) // p * pri.hp % p
-    # # dq = (np.power(c, q - 1) % qs - 1) // q * pri.hq % q
-    # gp = (powmod(c, p - 1, ps) - 1) // p * pri.hp % p
-    # gq = (powmod(c, q - 1, qs) - 1) // q * pri.hq % q
-    #
-    # u = (gq - gp) * pri.p_inverse % q
-    # res = gp + (u * p)
-    #
-    # print(res)
-    # # decrypt_to_p = powmod(ciphertext, self.p-1, self.psquare), self.p) * self.hp % self.p
-    # # decrypt_to_q = powmod(ciphertext, self.q-1, self.qsquare), self.q) * self.hq % self.q
-    # # return self.crt(decrypt_to_p, decrypt_to_q)
+    # print(de)
